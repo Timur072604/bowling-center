@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Табло Боулинг-Центра</title>
+    <title>Табло</title>
     <style>
         :root {
             --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -144,10 +144,6 @@
                     row.insertCell(0).textContent = index + 1;
                     row.insertCell(1).textContent = `Клиент ${client.ID}`;
                 });
-            } else {
-                const row = queueBody.insertRow();
-                row.insertCell(0).innerHTML = `<span class="lane-free">Очередь пуста</span>`;
-                row.cells[0].colSpan = 2;
             }
 
             finishedBody.innerHTML = '';
