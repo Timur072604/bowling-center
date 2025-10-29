@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Табло Боулинг-Центра</title>
+    <style>
+        :root {
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --border-radius: 24px;
+            --gap: 3rem;
+        }
+
+        body {
+            font-family: var(--font-family);
+            margin: 0;
+            background-color: #fff;
+            color: #000;
+            line-height: 1.6;
+        }
+
+        .wrapper {
+            max-width: 1800px;
+            margin: 4rem auto;
+            padding: 0 2rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            text-align: center;
+        }
+
+        .container {
+            display: flex;
+            gap: var(--gap);
+            align-items: flex-start;
+        }
+
+        .layout-column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: var(--gap);
+        }
+
+        .column {
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            border: 1px solid #000;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #000;
+        }
+
+        th {
+            font-weight: 600;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="wrapper">
+    <h1>Табло</h1>
+
+    <div class="container">
+        <div class="layout-column">
+            <div class="column">
+                <h2>Активные дорожки</h2>
+                <table id="lanes-table">
+                    <thead><tr><th>Дорожка</th><th>Клиент</th></tr></thead>
+                    <tbody id="lanes-body"></tbody>
+                </table>
+            </div>
+            <div class="column">
+                <h2>Очередь ожидания</h2>
+                <table id="queue-table">
+                    <thead><tr><th>Позиция</th><th>Клиент</th></tr></thead>
+                    <tbody id="queue-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="layout-column">
+            <div class="column">
+                <h2>Завершенные игры</h2>
+                <table id="finished-table">
+                    <thead><tr><th>Клиент</th><th>Статус</th><th>Счет</th><th>Игра</th></tr></thead>
+                    <tbody id="finished-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const lanesBody = document.getElementById('lanes-body');
+    const queueBody = document.getElementById('queue-body');
+    const finishedBody = document.getElementById('finished-body');
+
+    async function updateStatus() {
+        try {
+            const response = await fetch('/api/status');
+            const data = await response.json();
+
+            lanesBody.innerHTML = '';
+            const sortedLanes = Object.entries(data.Lanes || {}).sort((a, b) => a[0] - b[0]);
+            for (const [laneId, client] of sortedLanes) {
+                const row = lanesBody.insertRow();
+                row.insertCell(0).textContent = laneId;
+                if (client) {
+                    row.insertCell(1).textContent = `Клиент ${client.ID}`;
+                } else {
+                    row.insertCell(1).innerHTML = `<span class="lane-free">Свободна</span>`;
+                }
+            }
+
+            queueBody.innerHTML = '';
+            if (data.WaitingQueue && data.WaitingQueue.length > 0) {
+                data.WaitingQueue.forEach((client, index) => {
+                    const row = queueBody.insertRow();
+                    row.insertCell(0).textContent = index + 1;
+                    row.insertCell(1).textContent = `Клиент ${client.ID}`;
+                });
+            } else {
+                const row = queueBody.insertRow();
+                row.insertCell(0).innerHTML = `<span class="lane-free">Очередь пуста</span>`;
+                row.cells[0].colSpan = 2;
+            }
+
+            finishedBody.innerHTML = '';
+            if (data.FinishedGames) {
+                const sortedFinished = data.FinishedGames.sort((a, b) => a.Client.ID - b.Client.ID);
+                sortedFinished.forEach(game => {
+                    const row = finishedBody.insertRow();
+                    row.insertCell(0).textContent = `Клиент ${game.Client.ID}`;
+                    const statusCell = row.insertCell(1);
+                    statusCell.textContent = game.Status;
+                    if (game.Status === 'Ушел') {
+                        statusCell.className = 'status-left';
+                    }
+
+                    let scoreText = '';
+                    if (game.Status === 'Сыграл') {
+                        scoreText = game.Err ? 'Ошибка' : game.Score;
+                    }
+                    row.insertCell(2).textContent = scoreText;
+
+                    const gameStringCell = row.insertCell(3);
+                    if (game.Status === 'Сыграл') {
+                        gameStringCell.textContent = game.Client.GameString;
+                    } else {
+                        gameStringCell.textContent = '';
+                    }
+                });
+            }
+
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    updateStatus();
+    setInterval(updateStatus, 1000);
+</script>
+
+</body>
+</html>
